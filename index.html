@@ -1,0 +1,100 @@
+<!-- websockets.html -->
+<br>
+<br>
+
+<div class="onlineMembers"
+     style="width: 40%; padding: 0px; border: 2px solid black; float: right; ">
+    <h2>Online Members</h2>
+    <textarea id="onlineMembers" style="height: 150px; width: 100%; "></textarea>
+</div>
+<form id="form">
+<input type="submit" value="Send" />
+<input type="text" id="input"  autofocus />
+</form>
+<br>
+<pre id="output"></pre>
+<script>
+    var socket = new WebSocket("ws://localhost:8081/echo");
+    // var ws = new WebSocket("ws://localhost:2221/echo");
+
+    var user = prompt("Please enter client name", "your name");
+    var value="hello"
+    window.onload = function () {
+        var req = new XMLHttpRequest();
+        const url='http://localhost:8081/login';
+        req.open("POST", url,true);
+        req.setRequestHeader('Content-Type', 'application/json'); // Set the Content-Type header if needed
+        req.setRequestHeader('Access-Control-Allow-Origin', '*'); // This is for demonstration purposes only. You should use the actual domain of your server.
+        req.setRequestHeader("Content-Type", "application/json");
+        req.send(JSON.stringify({ "email": "hello@user.com", "response": { "name": "Tester" } }));
+        req.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                var myArr = JSON.parse(this.responseText);
+                    console.log(myArr);
+                output.innerHTML += "HTTP Response " +myArr["responseCode"]+"\n";
+            }
+        };
+
+        var message = {
+                name: user,
+                requestType: "register",
+            };
+            sendMessage(message)
+
+    }
+
+        var input = document.getElementById("input");
+        var output = document.getElementById("output");
+        var onlineMembers = document.getElementById("onlineMembers");
+        socket.onopen = function () {
+            output.innerHTML += "Status: Connected\n";
+            output.innerHTML += "\n";
+        };
+        socket.onmessage = function (e) {
+        onlineMembers.innerHTML = '';
+            var parsedMessage = JSON.parse(e.data);
+            console.info('Received message: ' + e.data);
+
+            if (parsedMessage.responseMessage == "accepted") {
+                output.innerHTML += "User_Registered: " +user+"\n";
+                onlineMembers.innerHTML +=parsedMessage.List;
+            } else if (parsedMessage.responseMessage == "already_registered") {
+                output.innerHTML += parsedMessage.name + ": " + parsedMessage.msg + "\n";
+                onlineMembers.innerHTML +=parsedMessage.List;
+            }else if (parsedMessage.responseMessage == "pong"){
+                onlineMembers.innerHTML +=parsedMessage.List;
+            }else{
+                output.innerHTML += parsedMessage.name + ": " + parsedMessage.msg + "\n";
+                onlineMembers.innerHTML +=parsedMessage.List;
+            }
+        };
+
+    document.getElementById("form").onsubmit = function () {
+        var message = {
+                    msg: input.value,
+                    requestType: "msg",
+                };
+        sendMessage(message)
+        input.value = "";
+        return false;
+    };
+    setInterval(ping, 10000);
+
+     function ping() {
+         var message = {
+             requestType: "status",
+         };
+         sendMessage(message)
+     };
+
+    function sendMessage(message) {
+            var jsonMessage = JSON.stringify(message);
+            console.log('Sending message: ' + jsonMessage);
+            socket.send(jsonMessage);
+    };
+
+    window.onbeforeunload = function () {
+        socket.close();
+    };
+
+</script>
